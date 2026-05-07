@@ -1,0 +1,48 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="flex-1 p-8 overflow-y-auto">
+  <h2 class="text-3xl font-bold mb-2">🛡️ Automod</h2>
+  <p class="text-gray-400 mb-8">Configure automated moderation rules for <strong><%= guild.name %></strong></p>
+  <% const rules = ['spam','channelSpam','mentions','attachments','emojis','msgLines','caps','links','invites']; %>
+  <% rules.forEach(ruleName => { %>
+  <% const rule = config.rules[ruleName] || {}; %>
+  <div class="bg-[#23272a] rounded-xl p-6 mb-6" id="rule-<%= ruleName %>">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-bold capitalize"><%= ruleName.replace(/([A-Z])/g, ' $1') %></h3>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" class="toggle-switch" data-rule="<%= ruleName %>" data-field="enabled" <%= rule.enabled ? 'checked' : '' %>>
+        <span class="text-sm"><%= rule.enabled ? 'Enabled' : 'Disabled' %></span>
+      </label>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <% if (rule.maxMessages !== undefined) { %><div><label class="label">Max Messages</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="maxMessages" value="<%= rule.maxMessages %>"></div><% } %>
+      <% if (rule.maxChannels !== undefined) { %><div><label class="label">Max Channels</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="maxChannels" value="<%= rule.maxChannels %>"></div><% } %>
+      <% if (rule.maxMentions !== undefined) { %><div><label class="label">Max Mentions</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="maxMentions" value="<%= rule.maxMentions %>"></div><% } %>
+      <% if (rule.maxAttachments !== undefined) { %><div><label class="label">Max Attachments</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="maxAttachments" value="<%= rule.maxAttachments %>"></div><% } %>
+      <% if (rule.maxEmojis !== undefined) { %><div><label class="label">Max Emojis</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="maxEmojis" value="<%= rule.maxEmojis %>"></div><% } %>
+      <% if (rule.warnAt !== undefined) { %><div><label class="label">Warn At (lines)</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="warnAt" value="<%= rule.warnAt %>"></div><% } %>
+      <% if (rule.deleteAt !== undefined) { %><div><label class="label">Delete At (lines)</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="deleteAt" value="<%= rule.deleteAt %>"></div><% } %>
+      <% if (rule.minChars !== undefined) { %><div><label class="label">Min Chars</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="minChars" value="<%= rule.minChars %>"></div><% } %>
+      <% if (rule.percentage !== undefined) { %><div><label class="label">Caps %</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="percentage" value="<%= rule.percentage %>"></div><% } %>
+      <% if (rule.timeWindow !== undefined) { %><div><label class="label">Time Window (s)</label><input type="number" class="input" data-rule="<%= ruleName %>" data-field="timeWindow" value="<%= rule.timeWindow %>"></div><% } %>
+      <div><label class="label">Punishment</label>
+        <select class="input" data-rule="<%= ruleName %>" data-field="punishment">
+          <% ['delete','warn','mute','kick','ban'].forEach(p => { %><option value="<%= p %>" <%= rule.punishment === p ? 'selected' : '' %>><%= p %></option><% }) %>
+        </select>
+      </div>
+      <% if (rule.muteDuration !== undefined) { %><div><label class="label">Mute Duration</label><input type="text" class="input" data-rule="<%= ruleName %>" data-field="muteDuration" value="<%= rule.muteDuration %>" placeholder="10m"></div><% } %>
+      <div><label class="label">Alert Channel</label>
+        <select class="input" data-rule="<%= ruleName %>" data-field="alertChannel">
+          <option value="">None</option>
+          <% channels.forEach(c => { %><option value="<%= c.id %>" <%= rule.alertChannel === c.id ? 'selected' : '' %>>#<%= c.name %></option><% }) %>
+        </select>
+      </div>
+      <div class="sm:col-span-2"><label class="label">Alert Message <span class="text-gray-500 text-xs">{user} {count} {limit} {channel}</span></label>
+        <input type="text" class="input w-full" data-rule="<%= ruleName %>" data-field="alertMessage" value="<%= rule.alertMessage || '' %>">
+      </div>
+    </div>
+    <button class="save-rule-btn mt-4 bg-[#5865f2] hover:bg-[#4752c4] text-white px-6 py-2 rounded-lg font-semibold transition-colors" data-rule="<%= ruleName %>" data-guild="<%= guild.id %>">Save</button>
+  </div>
+  <% }) %>
+</main>
+<%- include('partials/footer') %>
