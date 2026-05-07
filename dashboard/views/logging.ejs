@@ -1,0 +1,34 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="flex-1 p-8 overflow-y-auto">
+  <h2 class="text-3xl font-bold mb-2">📋 Logging</h2>
+  <p class="text-gray-400 mb-8">Configure log channels for <strong><%= guild.name %></strong></p>
+  <div class="bg-[#23272a] rounded-xl p-6">
+    <% const categoryDesc = {
+      moderation: 'Bans, kicks, mutes, warns, unbans',
+      messages: 'Message edits, deletes, bulk deletes',
+      members: 'Member joins, leaves, nickname & role changes',
+      channels: 'Channel creates, deletes, updates',
+      roles: 'Role creates, deletes, updates',
+      voice: 'Voice joins, leaves, moves, mutes',
+      invites: 'Invite creates and deletes',
+      server: 'Server name, icon, verification, boost level changes'
+    }; %>
+    <% Object.entries(categoryDesc).forEach(([cat, desc]) => { %>
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 pb-4 border-b border-gray-700 last:border-0">
+      <div class="flex-1">
+        <p class="font-semibold capitalize"><%= cat %></p>
+        <p class="text-gray-400 text-sm"><%= desc %></p>
+      </div>
+      <select class="input w-full sm:w-64" name="<%= cat %>" id="log-<%= cat %>">
+        <option value="">None (disabled)</option>
+        <% channels.forEach(c => { %>
+        <option value="<%= c.id %>" <%= (config.channels && config.channels[cat]) === c.id ? 'selected' : '' %>>#<%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <% }) %>
+    <button id="save-logging-btn" data-guild="<%= guild.id %>" class="mt-4 bg-[#5865f2] hover:bg-[#4752c4] text-white px-8 py-3 rounded-lg font-semibold transition-colors">Save All</button>
+  </div>
+</main>
+<%- include('partials/footer') %>
