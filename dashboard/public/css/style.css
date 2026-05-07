@@ -1,0 +1,80 @@
+* { box-sizing: border-box; }
+
+.sidebar-link {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: #d1d5db;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background-color 0.15s, color 0.15s;
+}
+.sidebar-link:hover {
+  background-color: #2f3136;
+  color: #fff;
+}
+
+.input {
+  background-color: #1e2124;
+  border: 1px solid #4b5563;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: #fff;
+  font-size: 0.875rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus {
+  border-color: #5865f2;
+}
+.input option {
+  background-color: #23272a;
+}
+
+.label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.toggle-switch {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: #5865f2;
+}
+
+.case-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: #374151;
+  color: #d1d5db;
+}
+.case-badge.ban { background-color: #7f1d1d; color: #fca5a5; }
+.case-badge.kick { background-color: #78350f; color: #fcd34d; }
+.case-badge.mute { background-color: #713f12; color: #fde68a; }
+.case-badge.warn { background-color: #78350f; color: #fef08a; }
+.case-badge.unban, .case-badge.unmute { background-color: #14532d; color: #86efac; }
+
+#toast {
+  transition: opacity 0.3s ease;
+}
+#toast.show {
+  display: block !important;
+}
+#toast.success { background-color: #166534; }
+#toast.error { background-color: #7f1d1d; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #23272a; }
+::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #5865f2; }
