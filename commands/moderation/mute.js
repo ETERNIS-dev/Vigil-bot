@@ -1,4 +1,4 @@
-const { createCase, resolveMember, canModerate, isImmune, parseDuration, expandReason } = require('../../utils/helpers');
+const { createCase, resolveMember, canModerate, isImmune, parseDuration, expandReason, getGuild, sendPunishmentDM } = require('../../utils/helpers');
 const { errorEmbed, successEmbed } = require('../../utils/embedBuilder');
 
 module.exports = {
@@ -24,14 +24,23 @@ module.exports = {
     const reason = await expandReason(message.guild.id, args.slice(2).join(' ') || 'No reason provided.');
     const expiresAt = new Date(Date.now() + ms);
     try {
-      await target.user.send(`🔇 You have been **muted** in **${message.guild.name}** for **${durationStr}**.\n**Reason:** ${reason}\n**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>`).catch(() => {});
-      await target.timeout(ms, reason);
-      await createCase(client, {
+      const guildSettings = await getGuild(message.guild.id);
+      const newCase = await createCase(client, {
         guildId: message.guild.id, type: 'MUTE',
         userId: target.id, userTag: target.user.tag,
         moderatorId: message.author.id, moderatorTag: message.author.tag,
         reason, duration: durationStr, expiresAt,
       });
+      await sendPunishmentDM(target.user, 'mute', {
+        server: message.guild.name,
+        reason,
+        moderator: message.author.tag,
+        duration: durationStr,
+        expiresAt,
+        caseNumber: newCase.caseNumber,
+        guildSettings,
+      });
+      await target.timeout(ms, reason);
       message.reply({ embeds: [successEmbed(`Muted **${target.user.tag}** for **${durationStr}**.\n**Reason:** ${reason}\n**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>`)] });
     } catch {
       message.reply({ embeds: [errorEmbed('Failed to mute that member.')] });

@@ -1,34 +1,60 @@
 <%- include('partials/header') %>
-<%- include('partials/sidebar') %>
-<main class="flex-1 p-8 overflow-y-auto">
-  <h2 class="text-3xl font-bold mb-2">📋 Logging</h2>
-  <p class="text-gray-400 mb-8">Configure log channels for <strong><%= guild.name %></strong></p>
-  <div class="bg-[#23272a] rounded-xl p-6">
-    <% const categoryDesc = {
-      moderation: 'Bans, kicks, mutes, warns, unbans',
-      messages: 'Message edits, deletes, bulk deletes',
-      members: 'Member joins, leaves, nickname & role changes',
-      channels: 'Channel creates, deletes, updates',
-      roles: 'Role creates, deletes, updates',
-      voice: 'Voice joins, leaves, moves, mutes',
-      invites: 'Invite creates and deletes',
-      server: 'Server name, icon, verification, boost level changes'
-    }; %>
-    <% Object.entries(categoryDesc).forEach(([cat, desc]) => { %>
-    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 pb-4 border-b border-gray-700 last:border-0">
-      <div class="flex-1">
-        <p class="font-semibold capitalize"><%= cat %></p>
-        <p class="text-gray-400 text-sm"><%= desc %></p>
+<%- include('partials/sidebar', { guild, user, activePage: 'logging' }) %>
+<main class="main-content">
+  <div class="breadcrumb">
+    <a href="/dashboard">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="/dashboard/<%= guild.id %>"><%= guild.name %></a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Logging</span>
+  </div>
+
+  <div class="page-header">
+    <h1 class="page-title">📋 Logging</h1>
+    <p class="page-subtitle">Configure log channels for <strong><%= guild.name %></strong></p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Log Channels</div>
+        <div class="card-desc">Select which channel each event category logs to</div>
       </div>
-      <select class="input w-full sm:w-64" name="<%= cat %>" id="log-<%= cat %>">
-        <option value="">None (disabled)</option>
-        <% channels.forEach(c => { %>
-        <option value="<%= c.id %>" <%= (config.channels && config.channels[cat]) === c.id ? 'selected' : '' %>>#<%= c.name %></option>
-        <% }) %>
-      </select>
     </div>
-    <% }) %>
-    <button id="save-logging-btn" data-guild="<%= guild.id %>" class="mt-4 bg-[#5865f2] hover:bg-[#4752c4] text-white px-8 py-3 rounded-lg font-semibold transition-colors">Save All</button>
+    <div class="card-divider"></div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:0;">
+      <%
+      const categoryInfo = {
+        moderation: { icon: '🔨', desc: 'Bans, kicks, mutes, warns, unbans' },
+        messages: { icon: '💬', desc: 'Message edits, deletes, bulk deletes' },
+        members: { icon: '👥', desc: 'Member joins, leaves, nickname & role changes' },
+        channels: { icon: '📢', desc: 'Channel creates, deletes, updates' },
+        roles: { icon: '🎭', desc: 'Role creates, deletes, updates' },
+        voice: { icon: '🔊', desc: 'Voice joins, leaves, moves, mutes' },
+        invites: { icon: '✉️', desc: 'Invite creates and deletes' },
+        server: { icon: '⚙️', desc: 'Server name, icon, verification, boost changes' },
+      };
+      const cats = Object.keys(categoryInfo);
+      %>
+      <% cats.forEach((cat, idx) => { %>
+      <div style="display:flex;align-items:center;gap:16px;padding:14px 0;<%= idx < cats.length-1 ? 'border-bottom:1px solid var(--card-border);' : '' %>">
+        <span style="font-size:20px;width:28px;text-align:center;flex-shrink:0;"><%= categoryInfo[cat].icon %></span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13.5px;text-transform:capitalize;"><%= cat %></div>
+          <div class="text-muted text-xs"><%= categoryInfo[cat].desc %></div>
+        </div>
+        <select class="input" id="log-<%= cat %>" style="width:220px;flex-shrink:0;">
+          <option value="">None (disabled)</option>
+          <% channels.forEach(c => { %>
+          <option value="<%= c.id %>" <%= (config.channels && config.channels[cat]) === c.id ? 'selected' : '' %>>#<%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <% }) %>
+    </div>
+    <div style="padding:0 20px 20px;display:flex;justify-content:flex-end;">
+      <button id="save-logging-btn" data-guild="<%= guild.id %>" class="btn btn-primary">Save All</button>
+    </div>
   </div>
 </main>
 <%- include('partials/footer') %>

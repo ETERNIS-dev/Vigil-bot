@@ -1,5 +1,5 @@
 const { PermissionFlagsBits } = require('discord.js');
-const { getAutomod, isImmune, createCase, parseDuration, checkWarnThresholds } = require('../utils/helpers');
+const { getAutomod, isImmune, createCase, parseDuration, checkWarnThresholds, sendPunishmentDM } = require('../utils/helpers');
 const { EmbedBuilder } = require('discord.js');
 
 const spamMap = new Map();
@@ -11,54 +11,92 @@ const msgLinesMap = new Map();
 
 function trackEntry(map, key, timeWindow, initialValue) {
   if (map.has(key)) return map.get(key);
-  const entry = initialValue;
+  const entry = { ...initialValue };
   map.set(key, entry);
   entry.timeout = setTimeout(() => map.delete(key), timeWindow * 1000);
   return entry;
 }
 
-async function applyPunishment(client, message, punishment, muteDuration, type, reason) {
-  const guildId = message.guild.id;
-  const member = message.member;
+async function deleteUserMessagesInWindow(message, timeWindow) {
   try {
-    if (punishment === 'delete') {
-      await message.delete().catch(() => {});
-    } else if (punishment === 'warn') {
-      await message.delete().catch(() => {});
-      await createCase(client, {
-        guildId, type, userId: member.id, userTag: member.user.tag,
-        moderatorId: client.user.id, moderatorTag: client.user.tag, reason,
-      });
-      await member.user.send(`⚠️ You have been warned in **${message.guild.name}**: ${reason}`).catch(() => {});
-      await checkWarnThresholds(client, member, guildId);
-    } else if (punishment === 'mute') {
-      await message.delete().catch(() => {});
-      const ms = parseDuration(muteDuration) || 600000;
-      await member.timeout(ms, reason);
-      await createCase(client, {
-        guildId, type, userId: member.id, userTag: member.user.tag,
-        moderatorId: client.user.id, moderatorTag: client.user.tag,
-        reason, duration: muteDuration, expiresAt: new Date(Date.now() + ms),
-      });
-      await member.user.send(`🔇 You have been muted in **${message.guild.name}** for ${muteDuration}: ${reason}`).catch(() => {});
-    } else if (punishment === 'kick') {
-      await message.delete().catch(() => {});
-      await member.user.send(`👢 You have been kicked from **${message.guild.name}**: ${reason}`).catch(() => {});
-      await member.kick(reason);
-      await createCase(client, {
-        guildId, type, userId: member.id, userTag: member.user.tag,
-        moderatorId: client.user.id, moderatorTag: client.user.tag, reason,
-      });
-    } else if (punishment === 'ban') {
-      await message.delete().catch(() => {});
-      await member.user.send(`🔨 You have been banned from **${message.guild.name}**: ${reason}`).catch(() => {});
-      await message.guild.members.ban(member.id, { reason });
-      await createCase(client, {
-        guildId, type, userId: member.id, userTag: member.user.tag,
-        moderatorId: client.user.id, moderatorTag: client.user.tag, reason,
-      });
+    const cutoff = Date.now() - timeWindow * 1000;
+    const fetched = await message.channel.messages.fetch({ limit: 100 }).catch(() => null);
+    if (!fetched) return;
+    const toDelete = fetched.filter(
+      m => m.author.id === message.author.id && m.createdTimestamp >= cutoff
+    );
+    if (toDelete.size === 0) return;
+    if (toDelete.size === 1) {
+      await toDelete.first().delete().catch(() => {});
+    } else {
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      const bulkable = toDelete.filter(m => m.createdTimestamp > fourteenDaysAgo);
+      if (bulkable.size > 1) {
+        await message.channel.bulkDelete(bulkable, true).catch(() => {});
+      } else if (bulkable.size === 1) {
+        await bulkable.first().delete().catch(() => {});
+      }
     }
   } catch (_) { /* silent */ }
+}
+
+async function applyPunishments(client, message, punishments, timeWindow, type, reason) {
+  const guildId = message.guild.id;
+  const member = message.member;
+  if (!member) return;
+
+  const sorted = [...punishments].sort((a, b) => {
+    const order = { delete_all: 0, dm_user: 1, warn: 2, mute: 3, kick: 4, ban: 5, report_to_mods: 6 };
+    return (order[a.type] ?? 99) - (order[b.type] ?? 99);
+  });
+
+  let warnRan = false;
+  for (const p of sorted) {
+    try {
+      if (p.type === 'delete_all') {
+        await deleteUserMessagesInWindow(message, timeWindow || 30);
+      } else if (p.type === 'dm_user') {
+        await member.user.send(
+          `⚠️ You triggered automod in **${message.guild.name}**.\n**Rule:** ${type}\n**Action taken:** ${sorted.filter(x => x.type !== 'dm_user' && x.type !== 'report_to_mods').map(x => x.type).join(', ') || 'none'}\n**Reason:** ${reason}`
+        ).catch(() => {});
+      } else if (p.type === 'warn') {
+        await createCase(client, {
+          guildId, type, userId: member.id, userTag: member.user.tag,
+          moderatorId: client.user.id, moderatorTag: client.user.tag, reason,
+        });
+        await member.user.send(`⚠️ You have been warned in **${message.guild.name}**: ${reason}`).catch(() => {});
+        warnRan = true;
+      } else if (p.type === 'mute') {
+        const ms = parseDuration(p.muteDuration) || 600000;
+        await member.timeout(ms, reason);
+        await createCase(client, {
+          guildId, type, userId: member.id, userTag: member.user.tag,
+          moderatorId: client.user.id, moderatorTag: client.user.tag,
+          reason, duration: p.muteDuration, expiresAt: new Date(Date.now() + ms),
+        });
+        await member.user.send(`🔇 You have been muted in **${message.guild.name}** for ${p.muteDuration}: ${reason}`).catch(() => {});
+      } else if (p.type === 'kick') {
+        await member.user.send(`👢 You have been kicked from **${message.guild.name}**: ${reason}`).catch(() => {});
+        await member.kick(reason);
+        await createCase(client, {
+          guildId, type, userId: member.id, userTag: member.user.tag,
+          moderatorId: client.user.id, moderatorTag: client.user.tag, reason,
+        });
+      } else if (p.type === 'ban') {
+        await member.user.send(`🔨 You have been banned from **${message.guild.name}**: ${reason}`).catch(() => {});
+        await message.guild.members.ban(member.id, { reason });
+        await createCase(client, {
+          guildId, type, userId: member.id, userTag: member.user.tag,
+          moderatorId: client.user.id, moderatorTag: client.user.tag, reason,
+        });
+      } else if (p.type === 'report_to_mods') {
+        // handled below via sendAlert
+      }
+    } catch (_) { /* silent */ }
+  }
+  if (warnRan) {
+    await checkWarnThresholds(client, member, guildId).catch(() => {});
+  }
 }
 
 async function sendAlert(guild, alertChannelId, alertMessage, vars) {
@@ -71,6 +109,12 @@ async function sendAlert(guild, alertChannelId, alertMessage, vars) {
     const embed = new EmbedBuilder().setColor(0xf39c12).setDescription(text).setTimestamp();
     await ch.send({ embeds: [embed] });
   } catch (_) { /* silent */ }
+}
+
+function getDefaultPunishments(rule) {
+  const p = rule.punishments;
+  if (p && p.length > 0) return p;
+  return [{ type: 'delete_all' }];
 }
 
 module.exports = async function runAutomod(client, message) {
@@ -96,7 +140,8 @@ module.exports = async function runAutomod(client, message) {
       spamMap.delete(key);
       clearTimeout(entry.timeout);
       const reason = `Automod: Spam (${entry.count} messages in ${spam.timeWindow}s)`;
-      await applyPunishment(client, message, spam.punishment, spam.muteDuration, 'AUTOMOD_SPAM', reason);
+      const punishments = getDefaultPunishments(spam);
+      await applyPunishments(client, message, punishments, spam.timeWindow, 'AUTOMOD_SPAM', reason);
       await sendAlert(message.guild, spam.alertChannel, spam.alertMessage, { user: `<@${userId}>`, count: entry.count, limit: spam.maxMessages, channel: message.channel.name, rule: 'spam' });
       blocked = true;
     }
@@ -111,7 +156,8 @@ module.exports = async function runAutomod(client, message) {
       channelSpamMap.delete(key);
       clearTimeout(entry.timeout);
       const reason = `Automod: Channel spam (${entry.channels.size} channels in ${channelSpam.timeWindow}s)`;
-      await applyPunishment(client, message, channelSpam.punishment, channelSpam.muteDuration, 'AUTOMOD_CHANNELSPAM', reason);
+      const punishments = getDefaultPunishments(channelSpam);
+      await applyPunishments(client, message, punishments, channelSpam.timeWindow, 'AUTOMOD_CHANNELSPAM', reason);
       await sendAlert(message.guild, channelSpam.alertChannel, channelSpam.alertMessage, { user: `<@${userId}>`, count: entry.channels.size, limit: channelSpam.maxChannels, channel: message.channel.name, rule: 'channelspam' });
       blocked = true;
     }
@@ -128,7 +174,8 @@ module.exports = async function runAutomod(client, message) {
         mentionsMap.delete(key);
         clearTimeout(entry.timeout);
         const reason = `Automod: Too many mentions (${entry.count} in ${mentions.timeWindow}s)`;
-        await applyPunishment(client, message, mentions.punishment, mentions.muteDuration, 'AUTOMOD_MENTIONS', reason);
+        const punishments = getDefaultPunishments(mentions);
+        await applyPunishments(client, message, punishments, mentions.timeWindow, 'AUTOMOD_MENTIONS', reason);
         await sendAlert(message.guild, mentions.alertChannel, mentions.alertMessage, { user: `<@${userId}>`, count: entry.count, limit: mentions.maxMentions, channel: message.channel.name, rule: 'mentions' });
         blocked = true;
       }
@@ -144,7 +191,8 @@ module.exports = async function runAutomod(client, message) {
       attachmentsMap.delete(key);
       clearTimeout(entry.timeout);
       const reason = `Automod: Too many attachments (${entry.count} in ${attachments.timeWindow}s)`;
-      await applyPunishment(client, message, attachments.punishment, attachments.muteDuration, 'AUTOMOD_ATTACHMENTS', reason);
+      const punishments = getDefaultPunishments(attachments);
+      await applyPunishments(client, message, punishments, attachments.timeWindow, 'AUTOMOD_ATTACHMENTS', reason);
       await sendAlert(message.guild, attachments.alertChannel, attachments.alertMessage, { user: `<@${userId}>`, count: entry.count, limit: attachments.maxAttachments, channel: message.channel.name, rule: 'attachments' });
       blocked = true;
     }
@@ -162,7 +210,8 @@ module.exports = async function runAutomod(client, message) {
         emojisMap.delete(key);
         clearTimeout(entry.timeout);
         const reason = `Automod: Too many emojis (${entry.count} in ${emojis.timeWindow}s)`;
-        await applyPunishment(client, message, emojis.punishment, emojis.muteDuration, 'AUTOMOD_EMOJIS', reason);
+        const punishments = getDefaultPunishments(emojis);
+        await applyPunishments(client, message, punishments, emojis.timeWindow, 'AUTOMOD_EMOJIS', reason);
         await sendAlert(message.guild, emojis.alertChannel, emojis.alertMessage, { user: `<@${userId}>`, count: entry.count, limit: emojis.maxEmojis, channel: message.channel.name, rule: 'emojis' });
         blocked = true;
       }
@@ -173,17 +222,17 @@ module.exports = async function runAutomod(client, message) {
   const msgLines = config.rules?.msgLines;
   if (!blocked && msgLines?.enabled) {
     const lineCount = (message.content.match(/\n/g) || []).length + 1;
-    if (lineCount >= msgLines.warnAt || lineCount >= msgLines.deleteAt) {
-      if (lineCount >= msgLines.deleteAt) {
-        await message.delete().catch(() => {});
-        await sendAlert(message.guild, msgLines.alertChannel, msgLines.alertMessage, { user: `<@${userId}>`, count: lineCount, limit: msgLines.deleteAt, channel: message.channel.name, rule: 'msglines' });
-        blocked = true;
-      } else if (lineCount >= msgLines.warnAt) {
-        const reason = `Automod: Message with too many lines (${lineCount})`;
-        await applyPunishment(client, message, 'warn', null, 'AUTOMOD_LINES', reason);
-        await sendAlert(message.guild, msgLines.alertChannel, msgLines.alertMessage, { user: `<@${userId}>`, count: lineCount, limit: msgLines.warnAt, channel: message.channel.name, rule: 'msglines' });
-        blocked = true;
-      }
+    if (lineCount >= msgLines.deleteAt) {
+      const reason = `Automod: Message with too many lines (${lineCount})`;
+      const punishments = getDefaultPunishments(msgLines);
+      await applyPunishments(client, message, punishments, 30, 'AUTOMOD_LINES', reason);
+      await sendAlert(message.guild, msgLines.alertChannel, msgLines.alertMessage, { user: `<@${userId}>`, count: lineCount, limit: msgLines.deleteAt, channel: message.channel.name, rule: 'msglines' });
+      blocked = true;
+    } else if (lineCount >= msgLines.warnAt) {
+      const reason = `Automod: Message with too many lines (${lineCount})`;
+      await applyPunishments(client, message, [{ type: 'warn' }], 30, 'AUTOMOD_LINES', reason);
+      await sendAlert(message.guild, msgLines.alertChannel, msgLines.alertMessage, { user: `<@${userId}>`, count: lineCount, limit: msgLines.warnAt, channel: message.channel.name, rule: 'msglines' });
+      blocked = true;
     }
   }
 
@@ -197,7 +246,8 @@ module.exports = async function runAutomod(client, message) {
       const pct = (upperCount / alpha.length) * 100;
       if (pct >= caps.percentage) {
         const reason = `Automod: Excessive caps (${Math.round(pct)}%)`;
-        await applyPunishment(client, message, caps.punishment, caps.muteDuration, 'AUTOMOD_CAPS', reason);
+        const punishments = getDefaultPunishments(caps);
+        await applyPunishments(client, message, punishments, 30, 'AUTOMOD_CAPS', reason);
         await sendAlert(message.guild, caps.alertChannel, caps.alertMessage, { user: `<@${userId}>`, count: Math.round(pct), limit: caps.percentage, channel: message.channel.name, rule: 'caps' });
         blocked = true;
       }
@@ -212,7 +262,8 @@ module.exports = async function runAutomod(client, message) {
       const hit = group.words?.find(w => lower.includes(w.toLowerCase()));
       if (hit) {
         const reason = `Automod: Blocked word (group: ${group.name})`;
-        await applyPunishment(client, message, group.punishment, group.muteDuration, 'AUTOMOD_WORDS', reason);
+        const punishments = group.punishments?.length ? group.punishments : [{ type: 'delete_all' }];
+        await applyPunishments(client, message, punishments, 30, 'AUTOMOD_WORDS', reason);
         await sendAlert(message.guild, group.alertChannel, group.alertMessage, { user: `<@${userId}>`, count: 1, limit: 0, channel: message.channel.name, rule: 'words' });
         blocked = true;
         break;
@@ -230,7 +281,8 @@ module.exports = async function runAutomod(client, message) {
       const allowed = links.whitelist?.some(w => domain === w || domain.endsWith('.' + w));
       if (!allowed) {
         const reason = `Automod: Blocked link (${domain})`;
-        await applyPunishment(client, message, links.punishment, links.muteDuration, 'AUTOMOD_LINKS', reason);
+        const punishments = getDefaultPunishments(links);
+        await applyPunishments(client, message, punishments, 30, 'AUTOMOD_LINKS', reason);
         await sendAlert(message.guild, links.alertChannel, links.alertMessage, { user: `<@${userId}>`, count: 1, limit: 0, channel: message.channel.name, rule: 'links' });
         blocked = true;
         break;
@@ -248,7 +300,8 @@ module.exports = async function runAutomod(client, message) {
       const allowed = invites.whitelist?.includes(code);
       if (!allowed) {
         const reason = `Automod: Discord invite link`;
-        await applyPunishment(client, message, invites.punishment, invites.muteDuration, 'AUTOMOD_INVITES', reason);
+        const punishments = getDefaultPunishments(invites);
+        await applyPunishments(client, message, punishments, 30, 'AUTOMOD_INVITES', reason);
         await sendAlert(message.guild, invites.alertChannel, invites.alertMessage, { user: `<@${userId}>`, count: 1, limit: 0, channel: message.channel.name, rule: 'invites' });
         blocked = true;
         break;

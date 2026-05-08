@@ -47,6 +47,7 @@ module.exports = function (client) {
   app.use('/dashboard', require('./routes/logging'));
   app.use('/dashboard', require('./routes/messages'));
   app.use('/dashboard', require('./routes/roles'));
+  app.use('/dashboard', require('./routes/appeals'));
 
   const port = process.env.DASHBOARD_PORT || 3000;
   app.listen(port, () => console.log(`[Vigil] Dashboard running on port ${port}`));

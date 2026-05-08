@@ -1,4 +1,20 @@
-  <div id="toast" class="hidden fixed bottom-6 right-6 px-6 py-3 rounded-lg text-white font-semibold z-50 shadow-lg transition-all"></div>
-  <script src="/js/dashboard.js"></script>
+<div id="toast-container"></div>
+
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-title" id="confirm-modal-title">Confirm Action</div>
+    <div class="modal-body" id="confirm-modal-body">Are you sure?</div>
+    <div id="confirm-modal-input-wrap" class="modal-input hidden">
+      <label class="label" id="confirm-modal-input-label">Note</label>
+      <textarea id="confirm-modal-input" class="input" rows="3" placeholder=""></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="confirm-modal-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-modal-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/dashboard.js"></script>
 </body>
 </html>

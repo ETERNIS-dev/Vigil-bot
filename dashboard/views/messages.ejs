@@ -1,58 +1,183 @@
 <%- include('partials/header') %>
-<%- include('partials/sidebar') %>
-<main class="flex-1 p-8 overflow-y-auto">
-  <h2 class="text-3xl font-bold mb-2">💬 Messages</h2>
-  <p class="text-gray-400 mb-6">Manage welcome, leave, boost, and role messages for <strong><%= guild.name %></strong></p>
-  <div class="flex gap-2 mb-8">
-    <% [['join','Join'],['leave','Leave'],['boost','Boost'],['rolemsg','Role']].forEach(([key,label]) => { %>
-    <a href="?tab=<%= key %>" class="px-4 py-2 rounded-lg font-semibold transition-colors <%= activeTab === key ? 'bg-[#5865f2] text-white' : 'bg-[#23272a] text-gray-300 hover:bg-[#2f3136]' %>"><%= label %> Messages</a>
-    <% }) %>
-  </div>
-  <% const currentMsgs = activeTab === 'join' ? join : activeTab === 'leave' ? leave : activeTab === 'boost' ? boost : rolemsg; %>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-    <% currentMsgs.forEach(msg => { %>
-    <div class="bg-[#23272a] rounded-xl p-5">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="font-bold"><%= msg.name %></h3>
-        <span class="text-xs px-2 py-1 rounded <%= msg.enabled ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-400' %>"><%= msg.enabled ? 'Enabled' : 'Disabled' %></span>
-      </div>
-      <p class="text-gray-400 text-sm mb-1">Channel: <#<%= msg.channelId %>></p>
-      <% if (msg.embed.useEmbed) { %>
-      <p class="text-gray-400 text-sm mb-3">Type: Embed</p>
-      <% } else { %>
-      <p class="text-gray-400 text-sm mb-3 truncate">Message: <%= (msg.plainMessage || '').slice(0,60) %></p>
-      <% } %>
-      <div class="flex gap-2">
-        <button class="delete-msg-btn flex-1 bg-red-900 hover:bg-red-800 text-red-200 py-1 rounded text-sm font-semibold" data-id="<%= msg._id %>" data-guild="<%= guild.id %>">Delete</button>
-      </div>
-    </div>
-    <% }) %>
-    <div class="bg-[#2f3136] border-2 border-dashed border-gray-600 rounded-xl p-5 flex items-center justify-center">
-      <button onclick="openCreateModal('<%= activeTab %>')" class="text-gray-400 hover:text-white font-semibold">+ Add New</button>
-    </div>
+<%- include('partials/sidebar', { guild, user, activePage: 'messages' }) %>
+<main class="main-content">
+  <div class="breadcrumb">
+    <a href="/dashboard">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="/dashboard/<%= guild.id %>"><%= guild.name %></a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Messages</span>
   </div>
 
-  <div id="create-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-    <div class="bg-[#23272a] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-      <h3 class="text-xl font-bold mb-4">Create Message</h3>
-      <input type="hidden" id="modal-type" value="">
-      <div class="flex flex-col gap-3">
-        <div><label class="label">Name</label><input id="msg-name" type="text" class="input w-full" placeholder="e.g. Main Welcome"></div>
-        <div><label class="label">Channel</label><select id="msg-channel" class="input w-full"><% channels.forEach(c => { %><option value="<%= c.id %>">#<%= c.name %></option><% }) %></select></div>
-        <div class="flex items-center gap-2"><input id="msg-use-embed" type="checkbox" checked class="w-4 h-4"> <label class="text-sm">Use Embed</label></div>
-        <div id="embed-fields">
-          <div><label class="label">Embed Color</label><input id="msg-color" type="color" value="#5865f2" class="h-10 w-full rounded cursor-pointer"></div>
-          <div><label class="label">Title</label><input id="msg-title" type="text" class="input w-full" placeholder="Welcome to {server}!"></div>
-          <div><label class="label">Description</label><textarea id="msg-desc" class="input w-full h-24" placeholder="Hey {user}, welcome to {server}! You are member #{memberCount}."></textarea></div>
-          <div><label class="label">Footer</label><input id="msg-footer" type="text" class="input w-full"></div>
-        </div>
-        <div id="plain-field" class="hidden"><label class="label">Plain Message</label><textarea id="msg-plain" class="input w-full h-24"></textarea></div>
-        <div class="flex items-center gap-2"><input id="msg-ping" type="checkbox" class="w-4 h-4"> <label class="text-sm">Ping User</label></div>
-        <p class="text-gray-500 text-xs">Variables: {user} {username} {server} {memberCount} {boostCount} {roleAdded}</p>
+  <div class="page-header">
+    <h1 class="page-title">💬 Messages</h1>
+    <p class="page-subtitle">Manage messages for <strong><%= guild.name %></strong></p>
+  </div>
+
+  <div class="tabs">
+    <% [['join','Join'],['leave','Leave'],['boost','Boost'],['rolemsg','Role'],['punishment','Punishment DMs']].forEach(([key,label]) => { %>
+    <a href="?tab=<%= key %>" class="tab-link <%= activeTab === key ? 'active' : '' %>"><%= label %></a>
+    <% }) %>
+  </div>
+
+  <% if (activeTab !== 'punishment') { %>
+  <% const currentMsgs = activeTab === 'join' ? join : activeTab === 'leave' ? leave : activeTab === 'boost' ? boost : rolemsg; %>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+    <% currentMsgs.forEach(msg => { %>
+    <div class="card" style="padding:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-weight:700;font-size:14px;"><%= msg.name %></span>
+        <span class="badge <%= msg.enabled ? 'badge-enabled' : 'badge-disabled' %>"><%= msg.enabled ? 'Enabled' : 'Disabled' %></span>
       </div>
-      <div class="flex gap-3 mt-4">
-        <button onclick="saveMessage('<%= guild.id %>')" class="flex-1 bg-[#5865f2] hover:bg-[#4752c4] text-white py-2 rounded-lg font-semibold">Save</button>
-        <button onclick="document.getElementById('create-modal').classList.add('hidden')" class="flex-1 bg-[#2f3136] text-gray-300 py-2 rounded-lg font-semibold">Cancel</button>
+      <p class="text-muted text-sm" style="margin-bottom:4px;">Channel: <#<%= msg.channelId %>></p>
+      <% if (msg.embed.useEmbed) { %>
+      <p class="text-muted text-xs" style="margin-bottom:12px;">Type: Embed</p>
+      <% } else { %>
+      <p class="text-muted text-xs" style="margin-bottom:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Message: <%= (msg.plainMessage || '').slice(0,50) %></p>
+      <% } %>
+      <button class="btn btn-danger btn-sm w-full delete-msg-btn" data-id="<%= msg._id %>" data-guild="<%= guild.id %>">Delete</button>
+    </div>
+    <% }) %>
+    <div class="card" style="padding:20px;display:flex;align-items:center;justify-content:center;border-style:dashed;cursor:pointer;" onclick="openCreateModal('<%= activeTab %>')">
+      <span style="color:var(--text-muted);font-weight:600;">+ Add New</span>
+    </div>
+  </div>
+  <% } else { %>
+
+  <% const pmTypes = [
+    { key: 'warn', label: '⚠️ Warn', color: '#f1c40f' },
+    { key: 'mute', label: '🔇 Mute', color: '#f39c12' },
+    { key: 'kick', label: '👢 Kick', color: '#e67e22' },
+    { key: 'ban', label: '🔨 Ban', color: '#e74c3c' },
+    { key: 'unban', label: '✅ Unban', color: '#2ecc71' },
+  ]; %>
+
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <% pmTypes.forEach(pt => { %>
+    <% const cfg = (guildSettings.punishmentMessages || {})[pt.key] || {}; %>
+    <% const emb = cfg.embed || {}; %>
+    <div class="card" id="pm-card-<%= pt.key %>">
+      <div class="card-header" style="cursor:pointer;" onclick="togglePmCard('<%= pt.key %>')">
+        <div style="width:10px;height:10px;border-radius:50%;background:<%= pt.color %>;flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div class="card-title"><%= pt.label %> DM</div>
+          <div class="card-desc"><%= cfg.enabled !== false ? 'DM enabled' : 'DM disabled' %></div>
+        </div>
+        <span class="badge <%= cfg.enabled !== false ? 'badge-enabled' : 'badge-disabled' %>"><%= cfg.enabled !== false ? 'Enabled' : 'Disabled' %></span>
+        <span style="color:var(--text-muted);font-size:12px;margin-left:8px;" id="pm-chevron-<%= pt.key %>">▼</span>
+      </div>
+      <div class="rule-card-body" id="pm-body-<%= pt.key %>" style="display:none;">
+        <div class="form-row" style="margin-bottom:16px;">
+          <div>
+            <label class="label">Enabled</label>
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-enabled-<%= pt.key %>" <%= cfg.enabled !== false ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label"><%= cfg.enabled !== false ? 'Enabled' : 'Disabled' %></span>
+            </label>
+          </div>
+          <div>
+            <label class="label">Embed Color</label>
+            <input type="color" id="pm-color-<%= pt.key %>" value="<%= emb.color || pt.color %>" class="input" style="height:42px;padding:4px 8px;cursor:pointer;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="label">Title</label>
+          <input type="text" id="pm-title-<%= pt.key %>" class="input" value="<%= emb.title || '' %>" placeholder="e.g. You have been banned">
+        </div>
+        <div class="form-group">
+          <label class="label">Description <span class="text-xs text-muted">{server} {reason} {moderator} {duration} {expiry}</span></label>
+          <textarea id="pm-desc-<%= pt.key %>" class="input" rows="3" placeholder="You have been banned from {server}."><%= emb.description || '' %></textarea>
+        </div>
+        <div class="form-group">
+          <label class="label">Footer</label>
+          <input type="text" id="pm-footer-<%= pt.key %>" class="input" value="<%= emb.footer || '' %>" placeholder="Optional footer text">
+        </div>
+        <div class="form-row" style="margin-bottom:16px;">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-showreason-<%= pt.key %>" <%= emb.showReason !== false ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Show Reason</span>
+            </label>
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-showmod-<%= pt.key %>" <%= emb.showModerator ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Show Moderator</span>
+            </label>
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-showserver-<%= pt.key %>" <%= emb.showServer !== false ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Show Server in Footer</span>
+            </label>
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-showtimestamp-<%= pt.key %>" <%= emb.showTimestamp !== false ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Show Timestamp</span>
+            </label>
+            <% if (pt.key === 'mute') { %>
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-showdur-<%= pt.key %>" <%= emb.showDuration !== false ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Show Duration</span>
+            </label>
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-showexpiry-<%= pt.key %>" <%= emb.showExpiry !== false ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Show Expiry</span>
+            </label>
+            <% } %>
+            <% if (pt.key === 'ban') { %>
+            <label class="toggle-wrapper">
+              <input type="checkbox" class="toggle-input" id="pm-showappeal-<%= pt.key %>" <%= emb.showAppealInfo !== false ? 'checked' : '' %>>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Show Appeal Info</span>
+            </label>
+            <% } %>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="btn btn-primary" onclick="savePunishmentMsg('<%= guild.id %>', '<%= pt.key %>')">Save</button>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+
+  <div id="create-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;margin:16px;">
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:16px;">Create Message</h3>
+      <input type="hidden" id="modal-type" value="">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div><label class="label">Name</label><input id="msg-name" type="text" class="input" placeholder="e.g. Main Welcome"></div>
+        <div><label class="label">Channel</label><select id="msg-channel" class="input"><% channels.forEach(c => { %><option value="<%= c.id %>">#<%= c.name %></option><% }) %></select></div>
+        <div>
+          <label class="toggle-wrapper">
+            <input id="msg-use-embed" type="checkbox" class="toggle-input" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Use Embed</span>
+          </label>
+        </div>
+        <div id="embed-fields" style="display:flex;flex-direction:column;gap:10px;">
+          <div><label class="label">Embed Color</label><input id="msg-color" type="color" value="#7c3aed" class="input" style="height:42px;cursor:pointer;"></div>
+          <div><label class="label">Title</label><input id="msg-title" type="text" class="input" placeholder="Welcome to {server}!"></div>
+          <div><label class="label">Description</label><textarea id="msg-desc" class="input" rows="3" placeholder="Hey {user}, welcome to {server}!"></textarea></div>
+          <div><label class="label">Footer</label><input id="msg-footer" type="text" class="input" placeholder="Optional footer"></div>
+        </div>
+        <div id="plain-field" style="display:none;"><label class="label">Plain Message</label><textarea id="msg-plain" class="input" rows="3"></textarea></div>
+        <div>
+          <label class="toggle-wrapper">
+            <input id="msg-ping" type="checkbox" class="toggle-input">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Ping User</span>
+          </label>
+        </div>
+        <p class="text-muted text-xs">Variables: {user} {username} {server} {memberCount} {boostCount} {roleAdded}</p>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button onclick="saveMessage('<%= guild.id %>')" class="btn btn-primary" style="flex:1;">Save</button>
+        <button onclick="document.getElementById('create-modal').style.display='none'" class="btn btn-secondary" style="flex:1;">Cancel</button>
       </div>
     </div>
   </div>
@@ -61,11 +186,11 @@
 <script>
 function openCreateModal(type) {
   document.getElementById('modal-type').value = type;
-  document.getElementById('create-modal').classList.remove('hidden');
+  document.getElementById('create-modal').style.display = 'flex';
 }
 document.getElementById('msg-use-embed').addEventListener('change', function() {
-  document.getElementById('embed-fields').classList.toggle('hidden', !this.checked);
-  document.getElementById('plain-field').classList.toggle('hidden', this.checked);
+  document.getElementById('embed-fields').style.display = this.checked ? 'flex' : 'none';
+  document.getElementById('plain-field').style.display = this.checked ? 'none' : 'block';
 });
 async function saveMessage(guildId) {
   const data = {
@@ -82,7 +207,7 @@ async function saveMessage(guildId) {
   };
   const res = await fetch(`/dashboard/${guildId}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
   const json = await res.json();
-  if (json.success) { showToast('Message saved!', true); setTimeout(() => location.reload(), 1000); }
+  if (json.success) { showToast('Message saved!', true); setTimeout(() => location.reload(), 900); }
   else showToast(json.error || 'Error saving', false);
 }
 document.querySelectorAll('.delete-msg-btn').forEach(btn => {
@@ -90,8 +215,39 @@ document.querySelectorAll('.delete-msg-btn').forEach(btn => {
     if (!confirm('Delete this message?')) return;
     const res = await fetch(`/dashboard/${btn.dataset.guild}/messages/${btn.dataset.id}`, { method: 'DELETE' });
     const json = await res.json();
-    if (json.success) { showToast('Deleted!', true); setTimeout(() => location.reload(), 800); }
+    if (json.success) { showToast('Deleted!', true); setTimeout(() => location.reload(), 700); }
     else showToast('Error deleting', false);
   });
 });
+
+function togglePmCard(type) {
+  const body = document.getElementById('pm-body-' + type);
+  const chevron = document.getElementById('pm-chevron-' + type);
+  const open = body.style.display !== 'block';
+  body.style.display = open ? 'block' : 'none';
+  if (chevron) chevron.textContent = open ? '▲' : '▼';
+}
+
+async function savePunishmentMsg(guildId, type) {
+  const g = id => document.getElementById(id);
+  const data = {
+    enabled: g(`pm-enabled-${type}`)?.checked ? 'true' : 'false',
+    color: g(`pm-color-${type}`)?.value || '#7c3aed',
+    title: g(`pm-title-${type}`)?.value || '',
+    description: g(`pm-desc-${type}`)?.value || '',
+    footer: g(`pm-footer-${type}`)?.value || '',
+    showReason: g(`pm-showreason-${type}`)?.checked ? 'true' : 'false',
+    showModerator: g(`pm-showmod-${type}`)?.checked ? 'true' : 'false',
+    showServer: g(`pm-showserver-${type}`)?.checked ? 'true' : 'false',
+    showTimestamp: g(`pm-showtimestamp-${type}`)?.checked ? 'true' : 'false',
+    showDuration: g(`pm-showdur-${type}`)?.checked ? 'true' : 'false',
+    showExpiry: g(`pm-showexpiry-${type}`)?.checked ? 'true' : 'false',
+    showAppealInfo: g(`pm-showappeal-${type}`)?.checked ? 'true' : 'false',
+  };
+  try {
+    const res = await fetch(`/dashboard/${guildId}/messages/punishment/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const json = await res.json();
+    showToast(json.success ? 'Punishment DM saved!' : (json.error || 'Error'), json.success);
+  } catch { showToast('Network error', false); }
+}
 </script>

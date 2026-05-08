@@ -1,69 +1,93 @@
 <%- include('partials/header') %>
-<%- include('partials/sidebar') %>
-<main class="flex-1 p-8 overflow-y-auto">
-  <h2 class="text-3xl font-bold mb-2">🎭 Roles</h2>
-  <p class="text-gray-400 mb-8">Manage auto-roles and reaction roles for <strong><%= guild.name %></strong></p>
-
-  <div class="bg-[#23272a] rounded-xl p-6 mb-8">
-    <h3 class="text-xl font-bold mb-4">Auto Roles</h3>
-    <p class="text-gray-400 text-sm mb-4">Roles automatically assigned to new members.</p>
-    <div class="flex flex-wrap gap-2 mb-4" id="autorole-list">
-      <% (guildSettings.autoroles || []).forEach(roleId => { %>
-      <% const role = roles.find(r => r.id === roleId); %>
-      <span class="bg-[#5865f2] px-3 py-1 rounded-full text-sm flex items-center gap-2">
-        <%= role ? role.name : roleId %>
-        <button class="remove-autorole text-white hover:text-red-300 font-bold" data-id="<%= roleId %>">×</button>
-      </span>
-      <% }) %>
-    </div>
-    <div class="flex gap-3">
-      <select id="add-autorole-select" class="input">
-        <option value="">Select role...</option>
-        <% roles.forEach(r => { %><option value="<%= r.id %>"><%= r.name %></option><% }) %>
-      </select>
-      <button id="add-autorole-btn" class="bg-[#5865f2] px-4 py-2 rounded-lg font-semibold">Add</button>
-    </div>
-    <div class="flex items-center gap-3 mt-4">
-      <label class="text-sm text-gray-400">Delay (seconds):</label>
-      <input id="autorole-delay" type="number" min="0" value="<%= guildSettings.autoroleDelay || 0 %>" class="input w-24">
-    </div>
-    <button id="save-autoroles-btn" data-guild="<%= guild.id %>" class="mt-4 bg-[#5865f2] hover:bg-[#4752c4] text-white px-6 py-2 rounded-lg font-semibold">Save Auto Roles</button>
+<%- include('partials/sidebar', { guild, user, activePage: 'roles' }) %>
+<main class="main-content">
+  <div class="breadcrumb">
+    <a href="/dashboard">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="/dashboard/<%= guild.id %>"><%= guild.name %></a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Roles</span>
   </div>
 
-  <div class="bg-[#23272a] rounded-xl p-6">
-    <h3 class="text-xl font-bold mb-4">Reaction Roles</h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+  <div class="page-header">
+    <h1 class="page-title">🎭 Roles</h1>
+    <p class="page-subtitle">Manage auto-roles and reaction roles for <strong><%= guild.name %></strong></p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Auto Roles</div>
+        <div class="card-desc">Roles automatically assigned to new members</div>
+      </div>
+    </div>
+    <div class="card-divider"></div>
+    <div style="padding:20px;">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:36px;" id="autorole-list">
+        <% (guildSettings.autoroles || []).forEach(roleId => { %>
+        <% const role = roles.find(r => r.id === roleId); %>
+        <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:600;background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);">
+          <%= role ? role.name : roleId %>
+          <button class="remove-autorole" data-id="<%= roleId %>" style="background:none;border:none;cursor:pointer;color:#a78bfa;font-size:15px;opacity:0.7;">×</button>
+        </span>
+        <% }) %>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+        <select id="add-autorole-select" class="input" style="flex:1;max-width:240px;">
+          <option value="">Select role to add...</option>
+          <% roles.forEach(r => { %><option value="<%= r.id %>"><%= r.name %></option><% }) %>
+        </select>
+        <button id="add-autorole-btn" class="btn btn-primary">Add</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <label class="label" style="margin:0;">Delay (seconds):</label>
+        <input id="autorole-delay" type="number" min="0" value="<%= guildSettings.autoroleDelay || 0 %>" class="input" style="width:100px;">
+      </div>
+      <button id="save-autoroles-btn" data-guild="<%= guild.id %>" class="btn btn-primary">Save Auto Roles</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Reaction Roles</div>
+        <div class="card-desc">Let members self-assign roles with reactions</div>
+      </div>
+      <button onclick="document.getElementById('create-rr-modal').style.display='flex'" class="btn btn-primary btn-sm">+ Create New</button>
+    </div>
+    <div class="card-divider"></div>
+    <div style="padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
+      <% if (!reactionRoles.length) { %>
+      <div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-muted);">No reaction roles yet.</div>
+      <% } %>
       <% reactionRoles.forEach(rr => { %>
-      <div class="bg-[#2f3136] rounded-xl p-4">
-        <h4 class="font-bold mb-1"><%= rr.embed.title || 'Untitled' %></h4>
-        <p class="text-gray-400 text-sm mb-1">Channel: <#<%= rr.channelId %>></p>
-        <p class="text-gray-400 text-sm mb-3">Options: <%= rr.options.length %></p>
-        <button class="delete-rr-btn bg-red-900 hover:bg-red-800 text-red-200 px-3 py-1 rounded text-sm font-semibold" data-id="<%= rr._id %>" data-guild="<%= guild.id %>">Delete</button>
+      <div class="card" style="padding:16px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;"><%= rr.embed.title || 'Untitled' %></div>
+        <div class="text-muted text-xs" style="margin-bottom:4px;">Channel: <#<%= rr.channelId %>></div>
+        <div class="text-muted text-xs" style="margin-bottom:12px;"><%= rr.options.length %> options</div>
+        <button class="btn btn-danger btn-xs w-full delete-rr-btn" data-id="<%= rr._id %>" data-guild="<%= guild.id %>">Delete</button>
       </div>
       <% }) %>
-      <div class="bg-[#2f3136] border-2 border-dashed border-gray-600 rounded-xl p-4 flex items-center justify-center">
-        <button onclick="document.getElementById('create-rr-modal').classList.remove('hidden')" class="text-gray-400 hover:text-white font-semibold">+ Create New</button>
-      </div>
     </div>
   </div>
 
-  <div id="create-rr-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-    <div class="bg-[#23272a] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-      <h3 class="text-xl font-bold mb-4">Create Reaction Role</h3>
-      <div class="flex flex-col gap-3">
-        <div><label class="label">Channel</label><select id="rr-channel" class="input w-full"><% channels.forEach(c => { %><option value="<%= c.id %>">#<%= c.name %></option><% }) %></select></div>
-        <div><label class="label">Embed Title</label><input id="rr-title" type="text" class="input w-full" placeholder="Choose Your Roles"></div>
-        <div><label class="label">Description</label><textarea id="rr-desc" class="input w-full h-20"></textarea></div>
-        <div><label class="label">Color</label><input id="rr-color" type="color" value="#5865f2" class="h-10 w-full rounded cursor-pointer"></div>
+  <div id="create-rr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;margin:16px;">
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:16px;">Create Reaction Role</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div><label class="label">Channel</label><select id="rr-channel" class="input"><% channels.forEach(c => { %><option value="<%= c.id %>">#<%= c.name %></option><% }) %></select></div>
+        <div><label class="label">Embed Title</label><input id="rr-title" type="text" class="input" placeholder="Choose Your Roles"></div>
+        <div><label class="label">Description</label><textarea id="rr-desc-embed" class="input" rows="2"></textarea></div>
+        <div><label class="label">Color</label><input id="rr-color" type="color" value="#7c3aed" class="input" style="height:42px;cursor:pointer;"></div>
         <div>
           <label class="label">Options</label>
           <div id="rr-options"></div>
-          <button onclick="addRROption()" class="text-sm text-[#5865f2] hover:underline mt-2">+ Add Option</button>
+          <button type="button" onclick="addRROption()" class="btn btn-secondary btn-sm" style="margin-top:8px;">+ Add Option</button>
         </div>
       </div>
-      <div class="flex gap-3 mt-4">
-        <button onclick="createReactionRole('<%= guild.id %>')" class="flex-1 bg-[#5865f2] hover:bg-[#4752c4] text-white py-2 rounded-lg font-semibold">Create</button>
-        <button onclick="document.getElementById('create-rr-modal').classList.add('hidden')" class="flex-1 bg-[#2f3136] text-gray-300 py-2 rounded-lg font-semibold">Cancel</button>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button onclick="createReactionRole('<%= guild.id %>')" class="btn btn-primary" style="flex:1;">Create</button>
+        <button onclick="document.getElementById('create-rr-modal').style.display='none'" class="btn btn-secondary" style="flex:1;">Cancel</button>
       </div>
     </div>
   </div>
@@ -81,11 +105,10 @@ document.getElementById('add-autorole-btn').addEventListener('click', () => {
   const role = allRoles.find(r => r.id === id);
   const list = document.getElementById('autorole-list');
   const span = document.createElement('span');
-  span.className = 'bg-[#5865f2] px-3 py-1 rounded-full text-sm flex items-center gap-2';
-  span.innerHTML = `${role?.name || id} <button class="remove-autorole text-white hover:text-red-300 font-bold" data-id="${id}">×</button>`;
+  span.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:600;background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);';
+  span.innerHTML = `${role?.name || id} <button style="background:none;border:none;cursor:pointer;color:#a78bfa;font-size:15px;opacity:0.7;" onclick="this.closest('span').remove();selectedAutoroles=selectedAutoroles.filter(i=>i!=='${id}')">×</button>`;
   list.appendChild(span);
   sel.value = '';
-  span.querySelector('.remove-autorole').addEventListener('click', function() { selectedAutoroles = selectedAutoroles.filter(i => i !== id); span.remove(); });
 });
 
 document.querySelectorAll('.remove-autorole').forEach(btn => {
@@ -107,14 +130,14 @@ document.querySelectorAll('.delete-rr-btn').forEach(btn => {
     if (!confirm('Delete this reaction role?')) return;
     const res = await fetch(`/dashboard/${this.dataset.guild}/roles/reactionrole/${this.dataset.id}`, { method: 'DELETE' });
     const json = await res.json();
-    if (json.success) { showToast('Deleted!', true); setTimeout(() => location.reload(), 800); }
+    if (json.success) { showToast('Deleted!', true); setTimeout(() => location.reload(), 700); }
   });
 });
 
 function addRROption() {
   const div = document.createElement('div');
-  div.className = 'flex gap-2 mb-2';
-  div.innerHTML = `<input type="text" placeholder="emoji" class="input w-20 rr-emoji"><select class="input flex-1 rr-role"><option value="">Role...</option>${allRoles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select><input type="text" placeholder="description" class="input flex-1 rr-desc">`;
+  div.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;';
+  div.innerHTML = `<input type="text" placeholder="emoji" class="input rr-emoji" style="width:70px;"><select class="input rr-role" style="flex:1;"><option value="">Role...</option>${allRoles.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select><input type="text" placeholder="label" class="input rr-rdesc" style="flex:1;">`;
   document.getElementById('rr-options').appendChild(div);
 }
 
@@ -122,12 +145,12 @@ async function createReactionRole(guildId) {
   const options = [...document.querySelectorAll('#rr-options > div')].map(d => ({
     emoji: d.querySelector('.rr-emoji').value,
     roleId: d.querySelector('.rr-role').value,
-    description: d.querySelector('.rr-desc').value,
+    description: d.querySelector('.rr-rdesc').value,
   })).filter(o => o.emoji && o.roleId);
-  const data = { channelId: document.getElementById('rr-channel').value, title: document.getElementById('rr-title').value, description: document.getElementById('rr-desc').value, color: document.getElementById('rr-color').value, options };
+  const data = { channelId: document.getElementById('rr-channel').value, title: document.getElementById('rr-title').value, description: document.getElementById('rr-desc-embed').value, color: document.getElementById('rr-color').value, options };
   const res = await fetch(`/dashboard/${guildId}/roles/reactionrole`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
   const json = await res.json();
-  if (json.success) { showToast('Reaction role created!', true); setTimeout(() => location.reload(), 1000); }
+  if (json.success) { showToast('Reaction role created!', true); setTimeout(() => location.reload(), 900); }
   else showToast(json.error || 'Error', false);
 }
 

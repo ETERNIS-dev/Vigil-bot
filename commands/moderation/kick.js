@@ -1,4 +1,4 @@
-const { createCase, resolveMember, canModerate, isImmune, expandReason } = require('../../utils/helpers');
+const { createCase, resolveMember, canModerate, isImmune, expandReason, getGuild, sendPunishmentDM } = require('../../utils/helpers');
 const { errorEmbed, successEmbed } = require('../../utils/embedBuilder');
 
 module.exports = {
@@ -17,14 +17,21 @@ module.exports = {
     if (await isImmune(target, message.guild.id)) return message.reply({ embeds: [errorEmbed('That member is immune from moderation.')] });
     const reason = await expandReason(message.guild.id, args.slice(1).join(' ') || 'No reason provided.');
     try {
-      await target.user.send(`👢 You have been **kicked** from **${message.guild.name}**.\n**Reason:** ${reason}`).catch(() => {});
-      await target.kick(reason);
-      await createCase(client, {
+      const guildSettings = await getGuild(message.guild.id);
+      const newCase = await createCase(client, {
         guildId: message.guild.id, type: 'KICK',
         userId: target.id, userTag: target.user.tag,
         moderatorId: message.author.id, moderatorTag: message.author.tag,
         reason,
       });
+      await sendPunishmentDM(target.user, 'kick', {
+        server: message.guild.name,
+        reason,
+        moderator: message.author.tag,
+        caseNumber: newCase.caseNumber,
+        guildSettings,
+      });
+      await target.kick(reason);
       message.reply({ embeds: [successEmbed(`Kicked **${target.user.tag}**.\n**Reason:** ${reason}`)] });
     } catch {
       message.reply({ embeds: [errorEmbed('Failed to kick that member.')] });

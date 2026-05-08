@@ -3,6 +3,7 @@ const Case = require('../database/models/Case');
 const AutomodConfig = require('../database/models/AutomodConfig');
 const ImmuneRole = require('../database/models/ImmuneRole');
 const { modEmbed } = require('./embedBuilder');
+const { EmbedBuilder } = require('discord.js');
 
 const automodCache = new Map();
 
@@ -77,7 +78,7 @@ function canModerate(authorMember, target, botMember) {
 function resolveVariables(text, data) {
   if (!text) return text;
   return text
-    .replace(/\{user\}/g, data.user ? `<@${data.user.id}>` : '')
+    .replace(/\{user\}/g, data.user ? `<@${data.user.id}>` : (data.username || ''))
     .replace(/\{username\}/g, data.user?.username || data.username || '')
     .replace(/\{tag\}/g, data.user?.tag || data.tag || '')
     .replace(/\{server\}/g, data.guild?.name || data.server || '')
@@ -85,7 +86,13 @@ function resolveVariables(text, data) {
     .replace(/\{boostCount\}/g, String(data.guild?.premiumSubscriptionCount ?? data.boostCount ?? '0'))
     .replace(/\{roleAdded\}/g, data.roleAdded || '')
     .replace(/\{roleRemoved\}/g, data.roleRemoved || '')
-    .replace(/\{inviter\}/g, data.inviter || 'Unknown');
+    .replace(/\{inviter\}/g, data.inviter || 'Unknown')
+    .replace(/\{reason\}/g, data.reason || 'No reason provided.')
+    .replace(/\{moderator\}/g, data.moderator || 'Unknown')
+    .replace(/\{duration\}/g, data.duration || '')
+    .replace(/\{expiry\}/g, data.expiry || '')
+    .replace(/\{caseNumber\}/g, data.caseNumber ? `#${data.caseNumber}` : '')
+    .replace(/\{note\}/g, data.note || '');
 }
 
 async function isImmune(member, guildId) {
@@ -135,6 +142,40 @@ async function expandReason(guildId, reason) {
   return alias || reason;
 }
 
+async function sendPunishmentDM(user, type, { server, reason, moderator, duration, expiresAt, caseNumber, guildSettings } = {}) {
+  try {
+    const cfg = guildSettings?.punishmentMessages?.[type];
+    if (!cfg || cfg.enabled === false) return;
+    const e = cfg.embed;
+    const vars = {
+      username: user.username,
+      tag: user.tag,
+      server: server || '',
+      reason: reason || 'No reason provided.',
+      moderator: moderator || 'Unknown',
+      duration: duration || '',
+      expiry: expiresAt ? new Date(expiresAt).toUTCString() : '',
+      caseNumber: caseNumber || '',
+    };
+    if (e?.useEmbed !== false) {
+      const embed = new EmbedBuilder().setColor(parseInt((e?.color || '#7c3aed').replace('#', ''), 16));
+      if (e?.title) embed.setTitle(resolveVariables(e.title, vars));
+      if (e?.description) embed.setDescription(resolveVariables(e.description, vars));
+      if (e?.showReason !== false && reason) embed.addFields({ name: 'Reason', value: reason, inline: true });
+      if (e?.showModerator && moderator) embed.addFields({ name: 'Moderator', value: moderator, inline: true });
+      if (e?.showDuration && duration) embed.addFields({ name: 'Duration', value: duration, inline: true });
+      if (e?.showExpiry && expiresAt) embed.addFields({ name: 'Expires', value: `<t:${Math.floor(new Date(expiresAt).getTime() / 1000)}:R>`, inline: true });
+      if (e?.showServer !== false) embed.setFooter({ text: server || '' });
+      if (e?.showTimestamp !== false) embed.setTimestamp();
+      await user.send({ embeds: [embed] }).catch(() => {});
+    } else {
+      let text = resolveVariables(e?.description || `You received a ${type} in {server}.`, vars);
+      if (e?.showReason !== false && reason) text += `\n**Reason:** ${reason}`;
+      await user.send(text).catch(() => {});
+    }
+  } catch (_) { /* silent */ }
+}
+
 async function sendWelcomeMessages(client, member, type, extraData = {}) {
   const WelcomeMessage = require('../database/models/WelcomeMessage');
   try {
@@ -146,7 +187,6 @@ async function sendWelcomeMessages(client, member, type, extraData = {}) {
         const data = { user: member.user, guild: member.guild, ...extraData };
         let pingText = msg.pingUser ? `<@${member.id}> ` : '';
         if (msg.embed.useEmbed) {
-          const { EmbedBuilder } = require('discord.js');
           const embed = new EmbedBuilder().setColor(msg.embed.color || '#5865F2');
           if (msg.embed.title) embed.setTitle(resolveVariables(msg.embed.title, data));
           if (msg.embed.description) embed.setDescription(resolveVariables(msg.embed.description, data));
@@ -183,5 +223,6 @@ module.exports = {
   isImmune,
   checkWarnThresholds,
   expandReason,
+  sendPunishmentDM,
   sendWelcomeMessages,
 };

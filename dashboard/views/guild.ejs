@@ -1,56 +1,135 @@
 <%- include('partials/header') %>
-<%- include('partials/sidebar') %>
-<main class="flex-1 p-8">
-  <div class="flex items-center gap-4 mb-8">
-    <img src="<%= guild.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" class="w-12 h-12 rounded-full">
+<%- include('partials/sidebar', { guild, user, activePage: 'overview' }) %>
+<main class="main-content">
+  <div class="breadcrumb">
+    <a href="/dashboard">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current"><%= guild.name %></span>
+  </div>
+
+  <div class="page-header" style="display:flex;align-items:center;gap:16px;">
+    <img src="<%= guild.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="" style="width:52px;height:52px;border-radius:50%;border:2px solid var(--card-border);" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
     <div>
-      <h2 class="text-3xl font-bold"><%= guild.name %></h2>
-      <p class="text-gray-400">Server Overview</p>
+      <h1 class="page-title"><%= guild.name %></h1>
+      <p class="page-subtitle">Server Overview</p>
     </div>
   </div>
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-    <div class="bg-[#23272a] rounded-xl p-6">
-      <p class="text-gray-400 text-sm">Total Members</p>
-      <p class="text-3xl font-bold text-[#5865f2]"><%= guild.memberCount %></p>
+
+  <div class="grid-4" style="margin-bottom:24px;">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div>
+        <div class="stat-value"><%= guild.memberCount.toLocaleString() %></div>
+        <div class="stat-label">Members</div>
+      </div>
     </div>
-    <div class="bg-[#23272a] rounded-xl p-6">
-      <p class="text-gray-400 text-sm">Total Cases</p>
-      <p class="text-3xl font-bold text-[#5865f2]"><%= totalCases %></p>
+    <div class="stat-card">
+      <div class="stat-icon">📋</div>
+      <div>
+        <div class="stat-value"><%= totalCases.toLocaleString() %></div>
+        <div class="stat-label">Total Cases</div>
+      </div>
     </div>
-    <div class="bg-[#23272a] rounded-xl p-6">
-      <p class="text-gray-400 text-sm">Active Automod Rules</p>
-      <p class="text-3xl font-bold text-[#5865f2]"><%= activeRules %></p>
+    <div class="stat-card">
+      <div class="stat-icon">🛡️</div>
+      <div>
+        <div class="stat-value"><%= activeRules %>/<%= totalRules %></div>
+        <div class="stat-label">Automod Rules Active</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⚡</div>
+      <div>
+        <div class="stat-value" style="font-size:20px;"><%= uptime %></div>
+        <div class="stat-label">Bot Uptime</div>
+      </div>
     </div>
   </div>
-  <div class="bg-[#23272a] rounded-xl p-6 mb-8">
-    <h3 class="text-xl font-bold mb-4">Recent Cases</h3>
-    <% if (!recentCases.length) { %>
-    <p class="text-gray-400">No cases yet.</p>
-    <% } else { %>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead><tr class="text-gray-400 border-b border-gray-700"><th class="text-left pb-2">Case</th><th class="text-left pb-2">Type</th><th class="text-left pb-2">User</th><th class="text-left pb-2">Moderator</th><th class="text-left pb-2">Date</th></tr></thead>
-        <tbody>
-          <% recentCases.forEach(c => { %>
-          <tr class="border-b border-gray-800">
-            <td class="py-2">#<%= c.caseNumber %></td>
-            <td class="py-2"><span class="case-badge <%= c.type.toLowerCase() %>"><%= c.type %></span></td>
-            <td class="py-2"><%= c.userTag %></td>
-            <td class="py-2"><%= c.moderatorTag %></td>
-            <td class="py-2 text-gray-400"><%= new Date(c.createdAt).toLocaleDateString() %></td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;" class="two-col-grid">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Recent Cases</div>
+          <div class="card-desc">Latest moderation actions</div>
+        </div>
+        <a href="/dashboard/<%= guild.id %>/moderation" class="btn btn-secondary btn-sm">View All</a>
+      </div>
+      <% if (!recentCases.length) { %>
+      <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No cases yet.</div>
+      <% } else { %>
+      <div class="table-container" style="border:none;border-radius:0;border-top:1px solid var(--card-border);">
+        <table>
+          <thead>
+            <tr>
+              <th>Case</th>
+              <th>Type</th>
+              <th>User</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% recentCases.forEach(c => { %>
+            <tr>
+              <td class="mono">#<%= c.caseNumber %></td>
+              <td><span class="case-badge <%= c.type.toLowerCase().replace('automod_', '') %>"><%= c.type %></span></td>
+              <td style="max-width:120px;" class="truncate"><%= c.userTag %></td>
+              <td class="text-muted"><%= new Date(c.createdAt).toLocaleDateString() %></td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
     </div>
-    <% } %>
-  </div>
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-    <a href="/dashboard/<%= guild.id %>/automod" class="bg-[#5865f2] hover:bg-[#4752c4] rounded-xl p-4 text-center font-semibold transition-colors">🛡️ Automod</a>
-    <a href="/dashboard/<%= guild.id %>/moderation" class="bg-[#2f3136] hover:bg-[#393c43] rounded-xl p-4 text-center font-semibold transition-colors">🔨 Cases</a>
-    <a href="/dashboard/<%= guild.id %>/logging" class="bg-[#2f3136] hover:bg-[#393c43] rounded-xl p-4 text-center font-semibold transition-colors">📋 Logging</a>
-    <a href="/dashboard/<%= guild.id %>/messages" class="bg-[#2f3136] hover:bg-[#393c43] rounded-xl p-4 text-center font-semibold transition-colors">💬 Messages</a>
-    <a href="/dashboard/<%= guild.id %>/roles" class="bg-[#2f3136] hover:bg-[#393c43] rounded-xl p-4 text-center font-semibold transition-colors">🎭 Roles</a>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <div style="padding:18px 20px;">
+          <div class="card-title" style="margin-bottom:8px;">Automod Status</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span class="text-muted text-sm"><%= activeRules %> of <%= totalRules %> rules enabled</span>
+            <span class="text-sm" style="color:var(--accent);font-weight:600;"><%= Math.round((activeRules / totalRules) * 100) %>%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" style="width:<%= Math.round((activeRules / totalRules) * 100) %>%"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+        <a href="/dashboard/<%= guild.id %>/automod" class="card" style="padding:16px;text-decoration:none;display:flex;align-items:center;gap:10px;transition:border-color 0.15s;">
+          <span style="font-size:20px;">🛡️</span>
+          <div>
+            <div style="font-weight:600;font-size:13px;">Automod</div>
+            <div class="text-muted text-xs">10 rules</div>
+          </div>
+        </a>
+        <a href="/dashboard/<%= guild.id %>/logging" class="card" style="padding:16px;text-decoration:none;display:flex;align-items:center;gap:10px;transition:border-color 0.15s;">
+          <span style="font-size:20px;">📋</span>
+          <div>
+            <div style="font-weight:600;font-size:13px;">Logging</div>
+            <div class="text-muted text-xs">8 categories</div>
+          </div>
+        </a>
+        <a href="/dashboard/<%= guild.id %>/messages" class="card" style="padding:16px;text-decoration:none;display:flex;align-items:center;gap:10px;transition:border-color 0.15s;">
+          <span style="font-size:20px;">💬</span>
+          <div>
+            <div style="font-weight:600;font-size:13px;">Messages</div>
+            <div class="text-muted text-xs">Welcome, leave...</div>
+          </div>
+        </a>
+        <a href="/dashboard/<%= guild.id %>/appeals" class="card" style="padding:16px;text-decoration:none;display:flex;align-items:center;gap:10px;transition:border-color 0.15s;">
+          <span style="font-size:20px;">⚖️</span>
+          <div>
+            <div style="font-weight:600;font-size:13px;">Appeals</div>
+            <div class="text-muted text-xs">Ban appeals</div>
+          </div>
+        </a>
+      </div>
+    </div>
   </div>
 </main>
 <%- include('partials/footer') %>
+<style>
+@media (max-width: 900px) { .two-col-grid { grid-template-columns: 1fr !important; } }
+</style>

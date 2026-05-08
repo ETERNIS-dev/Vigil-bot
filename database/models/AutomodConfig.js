@@ -1,18 +1,21 @@
 const { Schema, model } = require('mongoose');
 
+const punishmentSchema = new Schema({
+  type: { type: String, default: 'delete_all' },
+  muteDuration: { type: String, default: '10m' },
+}, { _id: false });
+
 const wordGroupSchema = new Schema({
   name: String,
   words: [String],
-  punishment: { type: String, default: 'delete' },
-  muteDuration: { type: String, default: '10m' },
+  punishments: { type: [punishmentSchema], default: [{ type: 'delete_all' }] },
   alertChannel: { type: String, default: null },
   alertMessage: { type: String, default: '⚠️ {user} used a blocked word.' },
 }, { _id: false });
 
 const ruleBase = {
   enabled: { type: Boolean, default: false },
-  punishment: { type: String, default: 'delete' },
-  muteDuration: { type: String, default: '10m' },
+  punishments: { type: [punishmentSchema], default: [{ type: 'delete_all' }] },
   alertChannel: { type: String, default: null },
 };
 
@@ -39,14 +42,12 @@ const automodConfigSchema = new Schema({
     },
     attachments: {
       ...ruleBase,
-      muteDuration: { type: String, default: '5m' },
       maxAttachments: { type: Number, default: 2 },
       timeWindow: { type: Number, default: 10 },
       alertMessage: { type: String, default: '⚠️ {user} sent too many attachments.' },
     },
     emojis: {
       ...ruleBase,
-      muteDuration: { type: String, default: '5m' },
       maxEmojis: { type: Number, default: 11 },
       timeWindow: { type: Number, default: 8 },
       alertMessage: { type: String, default: '⚠️ {user} sent too many emojis.' },
@@ -55,8 +56,7 @@ const automodConfigSchema = new Schema({
       enabled: { type: Boolean, default: false },
       warnAt: { type: Number, default: 6 },
       deleteAt: { type: Number, default: 8 },
-      timeWindow: { type: Number, default: 12 },
-      punishment: { type: String, default: 'delete' },
+      punishments: { type: [punishmentSchema], default: [{ type: 'delete_all' }] },
       alertChannel: { type: String, default: null },
       alertMessage: { type: String, default: '⚠️ {user} sent a message with too many lines.' },
     },
@@ -64,8 +64,7 @@ const automodConfigSchema = new Schema({
       enabled: { type: Boolean, default: false },
       minChars: { type: Number, default: 20 },
       percentage: { type: Number, default: 80 },
-      punishment: { type: String, default: 'delete' },
-      muteDuration: { type: String, default: '5m' },
+      punishments: { type: [punishmentSchema], default: [{ type: 'delete_all' }] },
       alertChannel: { type: String, default: null },
       alertMessage: { type: String, default: '⚠️ {user} used excessive caps.' },
     },
@@ -76,16 +75,14 @@ const automodConfigSchema = new Schema({
     links: {
       enabled: { type: Boolean, default: false },
       whitelist: { type: [String], default: [] },
-      punishment: { type: String, default: 'delete' },
-      muteDuration: { type: String, default: '10m' },
+      punishments: { type: [punishmentSchema], default: [{ type: 'delete_all' }] },
       alertChannel: { type: String, default: null },
       alertMessage: { type: String, default: '⚠️ {user} sent a blocked link.' },
     },
     invites: {
       enabled: { type: Boolean, default: false },
       whitelist: { type: [String], default: [] },
-      punishment: { type: String, default: 'delete' },
-      muteDuration: { type: String, default: '10m' },
+      punishments: { type: [punishmentSchema], default: [{ type: 'delete_all' }] },
       alertChannel: { type: String, default: null },
       alertMessage: { type: String, default: '⚠️ {user} sent a Discord invite.' },
     },

@@ -1,0 +1,209 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar', { guild, user, activePage: 'appeals' }) %>
+<main class="main-content">
+  <div class="breadcrumb">
+    <a href="/dashboard">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="/dashboard/<%= guild.id %>"><%= guild.name %></a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Appeals</span>
+  </div>
+
+  <div class="page-header">
+    <h1 class="page-title">⚖️ Ban Appeals</h1>
+    <p class="page-subtitle">Review and manage ban appeals for <strong><%= guild.name %></strong></p>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:24px;">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:var(--warning);">⏳</div>
+      <div>
+        <div class="stat-value"><%= stats.pending %></div>
+        <div class="stat-label">Pending</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:var(--success);">✅</div>
+      <div>
+        <div class="stat-value"><%= stats.approved %></div>
+        <div class="stat-label">Approved</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(239,68,68,0.12);color:var(--danger);">❌</div>
+      <div>
+        <div class="stat-value"><%= stats.denied %></div>
+        <div class="stat-label">Denied</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;" class="appeals-grid">
+    <div>
+      <div class="tabs">
+        <a href="?status=" class="tab-link <%= activeStatus === 'all' ? 'active' : '' %>">All</a>
+        <a href="?status=pending" class="tab-link <%= activeStatus === 'pending' ? 'active' : '' %>">Pending</a>
+        <a href="?status=approved" class="tab-link <%= activeStatus === 'approved' ? 'active' : '' %>">Approved</a>
+        <a href="?status=denied" class="tab-link <%= activeStatus === 'denied' ? 'active' : '' %>">Denied</a>
+      </div>
+
+      <% if (!appeals.length) { %>
+      <div class="card" style="padding:48px 24px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px;">⚖️</div>
+        <div style="font-weight:700;margin-bottom:6px;">No appeals found</div>
+        <p class="text-muted text-sm">When users submit ban appeals they will appear here.</p>
+      </div>
+      <% } else { %>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <% appeals.forEach(a => { %>
+        <div class="card" style="padding:18px 20px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+                <span style="font-weight:700;font-size:14px;"><%= a.userTag %></span>
+                <span class="badge badge-<%= a.status %>"><%= a.status %></span>
+                <% if (a.caseNumber) { %><span class="text-muted text-xs font-mono">Case #<%= a.caseNumber %></span><% } %>
+              </div>
+              <div class="text-muted text-xs" style="margin-bottom:4px;">Ban reason: <%= (a.banReason || 'N/A').slice(0, 80) %></div>
+              <% if (a.appealReason) { %>
+              <div style="font-size:13px;color:var(--text-secondary);background:var(--input-bg);border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid var(--input-border);">
+                "<%= a.appealReason.slice(0, 200) %><%= a.appealReason.length > 200 ? '...' : '' %>"
+              </div>
+              <% } else { %>
+              <div class="text-muted text-xs" style="margin-bottom:6px;font-style:italic;">No appeal reason submitted yet.</div>
+              <% } %>
+              <div class="text-muted text-xs">Submitted <% if(a.createdAt) { %><%= new Date(a.createdAt).toLocaleDateString() %><% } %></div>
+              <% if (a.reviewedByTag) { %>
+              <div class="text-muted text-xs">Reviewed by <%= a.reviewedByTag %><% if(a.reviewNote) { %> — "<%= a.reviewNote.slice(0,80) %>"<% } %></div>
+              <% } %>
+            </div>
+            <% if (a.status === 'pending') { %>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-success btn-sm approve-appeal-btn" data-id="<%= a._id %>" data-guild="<%= guild.id %>">Approve</button>
+              <button class="btn btn-danger btn-sm deny-appeal-btn" data-id="<%= a._id %>" data-guild="<%= guild.id %>">Deny</button>
+            </div>
+            <% } %>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="card" style="padding:20px;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:16px;">⚙️ Appeal Settings</div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label class="label">Status</label>
+          <label class="toggle-wrapper">
+            <input type="checkbox" class="toggle-input" id="appeal-enabled" <%= guildSettings.appealSettings?.enabled ? 'checked' : '' %>>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label" id="appeal-enabled-label"><%= guildSettings.appealSettings?.enabled ? 'Enabled' : 'Disabled' %></span>
+          </label>
+        </div>
+        <div>
+          <label class="label">Appeal Channel</label>
+          <select id="appeal-channel" class="input">
+            <option value="">None (DM to owner)</option>
+            <% channels.forEach(c => { %>
+            <option value="<%= c.id %>" <%= guildSettings.appealSettings?.appealChannelId === c.id ? 'selected' : '' %>>#<%= c.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="label">Appeal Message <span class="text-xs text-muted">{server} {reason} {caseNumber}</span></label>
+          <textarea id="appeal-message" class="input" rows="2" placeholder="You may appeal your ban..."><%= guildSettings.appealSettings?.appealMessage || '' %></textarea>
+        </div>
+        <div>
+          <label class="label">Approve Action</label>
+          <select id="appeal-approveaction" class="input">
+            <option value="unban" <%= guildSettings.appealSettings?.approveAction === 'unban' ? 'selected' : '' %>>Auto Unban</option>
+            <option value="notify" <%= guildSettings.appealSettings?.approveAction === 'notify' ? 'selected' : '' %>>Notify Only</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Approve Message <span class="text-xs text-muted">{server} {note}</span></label>
+          <textarea id="appeal-approvemsg" class="input" rows="2"><%= guildSettings.appealSettings?.approveMessage || '' %></textarea>
+        </div>
+        <div>
+          <label class="label">Deny Message <span class="text-xs text-muted">{server} {note}</span></label>
+          <textarea id="appeal-denymsg" class="input" rows="2"><%= guildSettings.appealSettings?.denyMessage || '' %></textarea>
+        </div>
+        <button class="btn btn-primary w-full" onclick="saveAppealSettings('<%= guild.id %>')">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deny-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:28px;width:100%;max-width:400px;margin:16px;">
+      <div style="font-size:17px;font-weight:700;margin-bottom:8px;">Deny Appeal</div>
+      <p class="text-muted text-sm" style="margin-bottom:14px;">Provide a reason for denying this appeal. It will be sent to the user.</p>
+      <textarea id="deny-reason" class="input" rows="3" placeholder="Reason for denial..."></textarea>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-danger" style="flex:1;" id="deny-confirm-btn">Deny</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('deny-modal').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</main>
+<%- include('partials/footer') %>
+<style>
+@media (max-width: 900px) { .appeals-grid { grid-template-columns: 1fr !important; } }
+</style>
+<script>
+document.querySelectorAll('.approve-appeal-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    const id = this.dataset.id;
+    const guildId = this.dataset.guild;
+    const note = prompt('Optional note to send to user (leave blank for none):');
+    if (note === null) return;
+    try {
+      const res = await fetch(`/dashboard/${guildId}/appeals/${id}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note }) });
+      const json = await res.json();
+      if (json.success) { showToast('Appeal approved!', true); setTimeout(() => location.reload(), 900); }
+      else showToast(json.error || 'Error', false);
+    } catch { showToast('Network error', false); }
+  });
+});
+
+let activeDenyId = null, activeDenyGuild = null;
+document.querySelectorAll('.deny-appeal-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    activeDenyId = this.dataset.id;
+    activeDenyGuild = this.dataset.guild;
+    document.getElementById('deny-reason').value = '';
+    document.getElementById('deny-modal').style.display = 'flex';
+  });
+});
+document.getElementById('deny-confirm-btn').addEventListener('click', async () => {
+  const reason = document.getElementById('deny-reason').value.trim();
+  if (!reason) { showToast('Please provide a reason.', false); return; }
+  try {
+    const res = await fetch(`/dashboard/${activeDenyGuild}/appeals/${activeDenyId}/deny`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
+    const json = await res.json();
+    document.getElementById('deny-modal').style.display = 'none';
+    if (json.success) { showToast('Appeal denied.', true); setTimeout(() => location.reload(), 900); }
+    else showToast(json.error || 'Error', false);
+  } catch { showToast('Network error', false); }
+});
+
+async function saveAppealSettings(guildId) {
+  const data = {
+    enabled: document.getElementById('appeal-enabled').checked ? 'true' : 'false',
+    appealChannelId: document.getElementById('appeal-channel').value || '',
+    appealMessage: document.getElementById('appeal-message').value || '',
+    approveAction: document.getElementById('appeal-approveaction').value,
+    approveMessage: document.getElementById('appeal-approvemsg').value || '',
+    denyMessage: document.getElementById('appeal-denymsg').value || '',
+  };
+  try {
+    const res = await fetch(`/dashboard/${guildId}/appeals/settings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const json = await res.json();
+    showToast(json.success ? 'Appeal settings saved!' : (json.error || 'Error'), json.success);
+  } catch { showToast('Network error', false); }
+}
+
+document.getElementById('appeal-enabled').addEventListener('change', function() {
+  document.getElementById('appeal-enabled-label').textContent = this.checked ? 'Enabled' : 'Disabled';
+});
+</script>

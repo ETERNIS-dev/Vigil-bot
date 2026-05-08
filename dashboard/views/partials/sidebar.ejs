@@ -1,32 +1,54 @@
-<aside class="w-64 bg-[#23272a] flex-shrink-0 flex flex-col min-h-screen p-4">
-  <div class="mb-8">
-    <h1 class="text-2xl font-bold text-[#5865f2]">⚔️ Vigil</h1>
-    <p class="text-gray-400 text-sm">Dashboard</p>
-  </div>
-  <% if (typeof guild !== 'undefined' && guild) { %>
-  <nav class="flex flex-col gap-2 flex-1">
-    <a href="/dashboard/<%= guild.id %>" class="sidebar-link">📊 Overview</a>
-    <a href="/dashboard/<%= guild.id %>/automod" class="sidebar-link">🛡️ Automod</a>
-    <a href="/dashboard/<%= guild.id %>/moderation" class="sidebar-link">🔨 Moderation</a>
-    <a href="/dashboard/<%= guild.id %>/logging" class="sidebar-link">📋 Logging</a>
-    <a href="/dashboard/<%= guild.id %>/messages" class="sidebar-link">💬 Messages</a>
-    <a href="/dashboard/<%= guild.id %>/roles" class="sidebar-link">🎭 Roles</a>
-    <div class="mt-4 border-t border-gray-700 pt-4">
-      <a href="/dashboard" class="sidebar-link">← All Servers</a>
+<button class="sidebar-toggle" id="sidebar-toggle">&#9776;</button>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">⚔️</div>
+      <span class="sidebar-logo-name">Vigil</span>
     </div>
-  </nav>
-  <% } else { %>
-  <nav class="flex flex-col gap-2 flex-1">
-    <a href="/dashboard" class="sidebar-link">🏠 Home</a>
-  </nav>
-  <% } %>
-  <div class="mt-auto pt-4 border-t border-gray-700">
-    <% if (typeof user !== 'undefined' && user) { %>
-    <div class="flex items-center gap-2 mb-2">
-      <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-8 h-8 rounded-full" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-      <span class="text-sm text-gray-300"><%= user.username %></span>
-    </div>
+    <% if (typeof guild !== 'undefined' && guild) { %>
+    <div class="sidebar-server-name"><%= guild.name %></div>
     <% } %>
-    <a href="/auth/logout" class="sidebar-link text-red-400">🚪 Logout</a>
+  </div>
+  <nav class="sidebar-nav">
+    <% if (typeof guild !== 'undefined' && guild) { %>
+    <span class="sidebar-section-label">Server</span>
+    <a href="/dashboard/<%= guild.id %>" class="sidebar-link <%= typeof activePage !== 'undefined' && activePage === 'overview' ? 'active' : '' %>">
+      <span class="nav-icon">📊</span> Overview
+    </a>
+    <a href="/dashboard/<%= guild.id %>/automod" class="sidebar-link <%= typeof activePage !== 'undefined' && activePage === 'automod' ? 'active' : '' %>">
+      <span class="nav-icon">🛡️</span> Automod
+    </a>
+    <a href="/dashboard/<%= guild.id %>/moderation" class="sidebar-link <%= typeof activePage !== 'undefined' && activePage === 'moderation' ? 'active' : '' %>">
+      <span class="nav-icon">🔨</span> Moderation
+    </a>
+    <a href="/dashboard/<%= guild.id %>/logging" class="sidebar-link <%= typeof activePage !== 'undefined' && activePage === 'logging' ? 'active' : '' %>">
+      <span class="nav-icon">📋</span> Logging
+    </a>
+    <a href="/dashboard/<%= guild.id %>/messages" class="sidebar-link <%= typeof activePage !== 'undefined' && activePage === 'messages' ? 'active' : '' %>">
+      <span class="nav-icon">💬</span> Messages
+    </a>
+    <a href="/dashboard/<%= guild.id %>/roles" class="sidebar-link <%= typeof activePage !== 'undefined' && activePage === 'roles' ? 'active' : '' %>">
+      <span class="nav-icon">🎭</span> Roles
+    </a>
+    <a href="/dashboard/<%= guild.id %>/appeals" class="sidebar-link <%= typeof activePage !== 'undefined' && activePage === 'appeals' ? 'active' : '' %>">
+      <span class="nav-icon">⚖️</span> Appeals
+    </a>
+    <hr class="sidebar-divider">
+    <a href="/dashboard" class="sidebar-link">
+      <span class="nav-icon">←</span> All Servers
+    </a>
+    <% } else { %>
+    <a href="/dashboard" class="sidebar-link active">
+      <span class="nav-icon">🏠</span> Home
+    </a>
+    <% } %>
+  </nav>
+  <div class="sidebar-user">
+    <% if (typeof user !== 'undefined' && user) { %>
+    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="sidebar-user-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+    <span class="sidebar-user-name"><%= user.username %></span>
+    <a href="/auth/logout" class="sidebar-logout" title="Logout">↗</a>
+    <% } %>
   </div>
 </aside>

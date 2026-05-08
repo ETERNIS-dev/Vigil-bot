@@ -1,56 +1,84 @@
 <%- include('partials/header') %>
-<%- include('partials/sidebar') %>
-<main class="flex-1 p-8 overflow-y-auto">
-  <h2 class="text-3xl font-bold mb-2">🔨 Moderation Cases</h2>
-  <p class="text-gray-400 mb-6"><%= totalCases %> total cases for <strong><%= guild.name %></strong></p>
-  <form method="GET" class="flex flex-wrap gap-3 mb-6">
-    <input type="text" name="search" value="<%= query.search || '' %>" placeholder="Search user/mod..." class="input">
-    <select name="type" class="input">
-      <option value="">All Types</option>
-      <% ['BAN','UNBAN','KICK','MUTE','UNMUTE','WARN','LOCK','AUTOMOD_SPAM','AUTOMOD_CAPS','AUTOMOD_WORDS','AUTOMOD_LINKS','AUTOMOD_INVITES','AUTOMOD_MENTIONS','AUTOMOD_ATTACHMENTS','AUTOMOD_EMOJIS','AUTOMOD_LINES','AUTOMOD_CHANNELSPAM'].forEach(t => { %>
-      <option value="<%= t %>" <%= query.type === t ? 'selected' : '' %>><%= t %></option>
-      <% }) %>
-    </select>
-    <button type="submit" class="bg-[#5865f2] px-4 py-2 rounded-lg font-semibold">Filter</button>
-    <a href="/dashboard/<%= guild.id %>/moderation" class="bg-[#2f3136] px-4 py-2 rounded-lg font-semibold">Reset</a>
-  </form>
-  <div class="bg-[#23272a] rounded-xl overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead><tr class="text-gray-400 border-b border-gray-700 bg-[#2f3136]">
-          <th class="text-left p-3">Case</th>
-          <th class="text-left p-3">Type</th>
-          <th class="text-left p-3">User</th>
-          <th class="text-left p-3">Moderator</th>
-          <th class="text-left p-3">Reason</th>
-          <th class="text-left p-3">Date</th>
-          <th class="text-left p-3">Actions</th>
-        </tr></thead>
-        <tbody>
-          <% if (!cases.length) { %>
-          <tr><td colspan="7" class="p-6 text-center text-gray-400">No cases found.</td></tr>
-          <% } %>
-          <% cases.forEach(c => { %>
-          <tr class="border-b border-gray-800 hover:bg-[#2f3136] transition-colors">
-            <td class="p-3 font-mono">#<%= c.caseNumber %></td>
-            <td class="p-3"><span class="case-badge"><%= c.type %></span></td>
-            <td class="p-3"><%= c.userTag %></td>
-            <td class="p-3"><%= c.moderatorTag %></td>
-            <td class="p-3 max-w-xs truncate text-gray-300"><%= c.reason %></td>
-            <td class="p-3 text-gray-400 whitespace-nowrap"><%= new Date(c.createdAt).toLocaleDateString() %></td>
-            <td class="p-3">
-              <button class="delete-case-btn text-red-400 hover:text-red-300 text-sm" data-case="<%= c.caseNumber %>" data-guild="<%= guild.id %>">Delete</button>
-            </td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
+<%- include('partials/sidebar', { guild, user, activePage: 'moderation' }) %>
+<main class="main-content">
+  <div class="breadcrumb">
+    <a href="/dashboard">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="/dashboard/<%= guild.id %>"><%= guild.name %></a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Moderation</span>
+  </div>
+
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">🔨 Moderation Cases</h1>
+      <p class="page-subtitle"><%= totalCases.toLocaleString() %> total cases for <strong><%= guild.name %></strong></p>
     </div>
   </div>
+
+  <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+    <form method="GET" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+      <div style="flex:1;min-width:160px;">
+        <label class="label">Search</label>
+        <input type="text" name="search" value="<%= query.search || '' %>" placeholder="User or moderator..." class="input">
+      </div>
+      <div style="min-width:160px;">
+        <label class="label">Type</label>
+        <select name="type" class="input">
+          <option value="">All Types</option>
+          <% ['BAN','UNBAN','KICK','MUTE','UNMUTE','WARN','LOCK','AUTOMOD_SPAM','AUTOMOD_CAPS','AUTOMOD_WORDS','AUTOMOD_LINKS','AUTOMOD_INVITES','AUTOMOD_MENTIONS','AUTOMOD_ATTACHMENTS','AUTOMOD_EMOJIS','AUTOMOD_LINES','AUTOMOD_CHANNELSPAM'].forEach(t => { %>
+          <option value="<%= t %>" <%= query.type === t ? 'selected' : '' %>><%= t %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="/dashboard/<%= guild.id %>/moderation" class="btn btn-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Case</th>
+          <th>Type</th>
+          <th>User</th>
+          <th>Moderator</th>
+          <th>Reason</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!cases.length) { %>
+        <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">No cases found.</td></tr>
+        <% } %>
+        <% cases.forEach(c => { %>
+        <tr>
+          <td class="mono" style="color:var(--text-secondary);">#<%= c.caseNumber %></td>
+          <td><span class="case-badge <%= c.type.toLowerCase().replace('automod_','') %>"><%= c.type %></span></td>
+          <td><%= c.userTag %></td>
+          <td style="color:var(--text-muted);"><%= c.moderatorTag %></td>
+          <td style="max-width:200px;" class="truncate text-muted"><%= c.reason %></td>
+          <td class="text-muted" style="white-space:nowrap;"><%= new Date(c.createdAt).toLocaleDateString() %></td>
+          <td>
+            <button class="btn btn-danger btn-xs delete-case-btn" data-case="<%= c.caseNumber %>" data-guild="<%= guild.id %>">Delete</button>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
   <% if (totalPages > 1) { %>
-  <div class="flex gap-2 mt-4 justify-center">
+  <div style="display:flex;gap:6px;margin-top:16px;justify-content:center;flex-wrap:wrap;">
     <% for (let i = 0; i < totalPages; i++) { %>
-    <a href="?page=<%= i %>&search=<%= query.search || '' %>&type=<%= query.type || '' %>" class="px-3 py-1 rounded <%= i === page ? 'bg-[#5865f2]' : 'bg-[#23272a]' %>"><%= i + 1 %></a>
+    <a href="?page=<%= i %>&search=<%= query.search || '' %>&type=<%= query.type || '' %>"
+       style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--card-border);background:<%= i === page ? 'var(--accent)' : 'var(--card-bg)' %>;color:<%= i === page ? 'white' : 'var(--text-secondary)' %>;">
+      <%= i + 1 %>
+    </a>
     <% } %>
   </div>
   <% } %>

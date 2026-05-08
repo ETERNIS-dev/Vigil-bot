@@ -1,19 +1,36 @@
 <%- include('partials/header') %>
-<%- include('partials/sidebar', { guild: null }) %>
-<main class="flex-1 p-8">
-  <h2 class="text-3xl font-bold mb-2">Your Servers</h2>
-  <p class="text-gray-400 mb-8">Select a server to manage.</p>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<%- include('partials/sidebar', { guild: null, user: user }) %>
+<main class="main-content">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">Your Servers</h1>
+      <p class="page-subtitle">Select a server to manage with Vigil.</p>
+    </div>
+    <a href="https://discord.com/oauth2/authorize?client_id=<%= process.env.CLIENT_ID %>&permissions=8&scope=bot" target="_blank" rel="noopener" class="btn btn-primary">
+      ➕ Invite Vigil
+    </a>
+  </div>
+
+  <% if (!guilds.length) { %>
+  <div class="card" style="text-align:center;padding:48px 24px;">
+    <div style="font-size:48px;margin-bottom:12px;">🤔</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">No servers found</div>
+    <p class="text-muted text-sm" style="margin-bottom:20px;">Vigil isn't in any of your servers yet.</p>
+    <a href="https://discord.com/oauth2/authorize?client_id=<%= process.env.CLIENT_ID %>&permissions=8&scope=bot" target="_blank" class="btn btn-primary">Add to Server</a>
+  </div>
+  <% } else { %>
+  <div class="grid-auto">
     <% guilds.forEach(g => { %>
-    <div class="bg-[#23272a] rounded-xl p-6 flex flex-col items-center gap-4 hover:bg-[#2f3136] transition-colors">
-      <img src="<%= g.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="<%= g.name %>" class="w-16 h-16 rounded-full">
-      <div class="text-center">
-        <h3 class="font-bold text-lg"><%= g.name %></h3>
-        <p class="text-gray-400 text-sm"><%= g.memberCount %> members</p>
+    <div class="server-card" onclick="location.href='/dashboard/<%= g.id %>'">
+      <img src="<%= g.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="<%= g.name %>" class="server-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+      <div>
+        <div class="server-name"><%= g.name %></div>
+        <div class="server-members"><%= g.memberCount.toLocaleString() %> members</div>
       </div>
-      <a href="/dashboard/<%= g.id %>" class="bg-[#5865f2] hover:bg-[#4752c4] text-white px-6 py-2 rounded-lg font-semibold transition-colors w-full text-center">Manage</a>
+      <a href="/dashboard/<%= g.id %>" class="btn btn-primary" style="width:100%" onclick="event.stopPropagation()">Manage</a>
     </div>
     <% }) %>
   </div>
+  <% } %>
 </main>
 <%- include('partials/footer') %>
