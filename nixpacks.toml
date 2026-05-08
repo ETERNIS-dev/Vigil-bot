@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install -g pnpm", "pnpm install --ignore-workspace-root-check"]
+cmds = ["npm install --legacy-peer-deps"]
 
 [phases.build]
 cmds = ["echo 'No build step needed'"]
